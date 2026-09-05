@@ -97,19 +97,21 @@ Rather than jumping directly into Kubernetes, the project starts by understandin
 
 ## Stage 1 — Docker
 
-* [ ] Inspect the Scrob repository
-* [ ] Understand the application requirements
-* [ ] Understand the Docker image
-* [ ] Understand the PostgreSQL dependency
-* [ ] Create Docker Compose configuration
-* [ ] Configure PostgreSQL
-* [ ] Configure Scrob
-* [ ] Configure persistent storage
-* [ ] Start the application
-* [ ] Verify Scrob
-* [ ] Test PostgreSQL connectivity
-* [ ] Document the Docker architecture
-
+* [x] Inspect the Scrob repository
+* [x] Understand the application requirements
+* [x] Understand the Docker image
+* [x] Understand the PostgreSQL dependency
+* [x] Create Docker Compose configuration
+* [x] Configure PostgreSQL
+* [x] Configure Scrob
+* [x] Configure persistent storage
+* [x] Start the application
+* [x] Verify Scrob
+* [x] Test PostgreSQL connectivity
+* [x] Document the Docker architecture
+* [x] Troubleshoot the Scrob persistent-data volume path
+* [x] Verify container health
+* [x] Verify HTTP access
 ---
 
 ## Stage 2 — Kind Kubernetes Cluster
@@ -447,16 +449,16 @@ The exact commands will be documented as each stage is completed.
 
 | Stage                     | Status         |
 | ------------------------- | -------------- |
-| Stage 0 — Preparation     | 🟡 In Progress |
-| Stage 1 — Docker          | ⚪ Not Started  |
-| Stage 2 — Kind            | ⚪ Not Started  |
-| Stage 3 — PostgreSQL      | ⚪ Not Started  |
-| Stage 4 — Scrob           | ⚪ Not Started  |
-| Stage 5 — Istio           | ⚪ Not Started  |
-| Stage 6 — Argo CD         | ⚪ Not Started  |
-| Stage 7 — GitOps          | ⚪ Not Started  |
-| Stage 8 — Troubleshooting | ⚪ Not Started  |
-| Stage 9 — Improvements    | ⚪ Not Started  |
+| Stage 0 — Preparation     | ✅ Complete    |
+| Stage 1 — Docker          | ✅ Complete    |
+| Stage 2 — Kind            | 🔵 Next        |
+| Stage 3 — PostgreSQL      | ⚪ Not Started |
+| Stage 4 — Scrob           | ⚪ Not Started |
+| Stage 5 — Istio           | ⚪ Not Started |
+| Stage 6 — Argo CD         | ⚪ Not Started |
+| Stage 7 — GitOps          | ⚪ Not Started |
+| Stage 8 — Troubleshooting | ⚪ Not Started |
+| Stage 9 — Improvements    | ⚪ Not Started |
 
 ---
 

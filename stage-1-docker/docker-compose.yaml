@@ -36,7 +36,7 @@ services:
         condition: service_healthy
 
     volumes:
-      - scrob_data:/app/data
+      - scrob_data:/app/backend/data
 
 volumes:
   db_data:

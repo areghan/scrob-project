@@ -27,135 +27,110 @@ This stage establishes the application architecture before moving the workload i
                 |     16      |
                 +------+------+
                        |
-                       v
-                Docker Volume
-```
+              +--------+--------+
+              |                 |
+              v                 v
+          scrob_data          db_data
+        Docker Volume       Docker Volume
 
----
+The final Docker architecture separates the application from the database.
 
-## Why PostgreSQL Is Separate
+Why PostgreSQL Is Separate
 
-Scrob provides an omnibus image containing PostgreSQL, but this project will use the standard deployment with PostgreSQL as a separate container.
+Scrob provides an omnibus image containing PostgreSQL, but this project uses the standard deployment with PostgreSQL as a separate container.
 
 This is intentional.
 
 The eventual Kubernetes architecture will also separate:
 
-```text
 Scrob
   |
   v
 PostgreSQL
-```
 
 This allows us to learn:
 
-* Container-to-container networking
-* Database configuration
-* Environment variables
-* Persistent volumes
-* Service discovery
-* Application/database dependencies
-* Kubernetes Services
-* Kubernetes PersistentVolumeClaims
-
----
-
-## Container Images
-
-### Scrob
-
-```text
+Container-to-container networking
+Database configuration
+Environment variables
+Persistent volumes
+Service discovery
+Application/database dependencies
+Kubernetes Services
+Kubernetes PersistentVolumeClaims
+Container Images
+Scrob
 bellamy/scrob:latest
-```
 
 Scrob also has a GHCR mirror:
 
-```text
 ghcr.io/ellite/scrob:latest
-```
 
-For the initial Docker learning stage, the documented Docker Hub image will be used.
+For the initial Docker learning stage, the documented Docker Hub image is used.
 
-Later in the project we will pin the application to a specific release rather than relying on `latest`.
+Later in the project we will pin the application to a specific release rather than relying on latest.
 
-### PostgreSQL
-
-```text
+PostgreSQL
 postgres:16-alpine
-```
 
-Scrob's current Docker documentation specifies PostgreSQL 16 for the standard deployment.
+PostgreSQL 16 is used for the standard Scrob deployment.
 
----
-
-## Ports
-
-| Component  | Container Port |    Host Port | Purpose         |
-| ---------- | -------------: | -----------: | --------------- |
-| Scrob      |           7330 |         7330 | Web application |
-| PostgreSQL |           5432 | Not required | Database        |
+Ports
+Component	Container Port	Host Port	Purpose
+Scrob	7330	7330	Web application
+PostgreSQL	5432	Not exposed	Database
 
 PostgreSQL does not need to be exposed to the host because Scrob communicates with it through the Docker network.
 
----
+Scrob Configuration
 
-## Scrob Configuration
+The deployment requires:
 
-The standard Scrob deployment requires:
-
-```text
 SECRET_KEY
 DATABASE_URL
-```
-
-### SECRET_KEY
+SECRET_KEY
 
 The secret key is used by Scrob for JWT signing.
 
 A secure key can be generated with:
 
-```bash
 openssl rand -hex 32
-```
 
-### DATABASE_URL
+The generated secret is stored only in the local .env file.
+
+It must never be committed to Git.
+
+DATABASE_URL
 
 The PostgreSQL connection string follows this format:
 
-```text
 postgresql+asyncpg://USER:PASSWORD@HOST:5432/DATABASE
-```
 
-For our Docker Compose deployment:
+For this Docker Compose deployment:
 
-```text
 postgresql+asyncpg://scrob:PASSWORD@scrob-db:5432/scrob
-```
 
-The hostname is `scrob-db` because Docker Compose provides service-name DNS resolution.
+The hostname is:
 
----
+scrob-db
 
-## PostgreSQL Configuration
+because Docker Compose provides service-name DNS resolution between containers.
 
-The PostgreSQL container will use:
+PostgreSQL Configuration
 
-```text
+The PostgreSQL container uses:
+
 POSTGRES_USER=scrob
 POSTGRES_PASSWORD=<secure password>
 POSTGRES_DB=scrob
-```
 
-The database data will be stored in a Docker volume.
+The database data is stored in the named Docker volume:
 
----
+db_data
+Persistent Storage
 
-## Persistent Storage
+Two logical persistent data areas are used:
 
-Two logical persistent data areas will be used:
-
-```text
 db_data
     |
     v
@@ -165,45 +140,48 @@ scrob_data
     |
     v
 Scrob application data
-```
 
-This prevents application and database data from being lost when containers are recreated.
+The Scrob volume is mounted at:
 
----
+/app/backend/data
 
-## Environment Variables
+inside the Scrob container.
 
-Sensitive values will not be committed to Git.
+The PostgreSQL volume is mounted at:
 
-The project will use:
+/var/lib/postgresql/data
 
-```text
+inside the PostgreSQL container.
+
+Using named volumes means application and database data can survive container recreation.
+
+Environment Variables
+
+Sensitive values are not committed to Git.
+
+The project uses:
+
 .env
-```
 
 for local secrets.
 
-A safe template will be provided as:
+A safe template is provided as:
 
-```text
 .env.example
-```
 
-The actual `.env` file must remain ignored by Git.
+The real .env file is ignored by Git.
 
----
+This was verified with:
 
-## Docker Compose
+git check-ignore -v stage-1-docker/.env
+Docker Compose
 
-The final Stage 1 deployment will use:
+The Stage 1 deployment uses:
 
-```text
-docker-compose.yaml
-```
+stage-1-docker/docker-compose.yaml
 
 with two services:
 
-```text
 services:
 
   scrob-db:
@@ -211,144 +189,259 @@ services:
 
   scrob:
     Scrob application
-```
 
-The Scrob service will depend on PostgreSQL becoming healthy before starting.
+The Scrob service depends on PostgreSQL becoming healthy before starting.
 
----
+PostgreSQL Health Check
 
-## Health Check
+PostgreSQL uses:
 
-PostgreSQL will use:
+pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}
 
-```bash
-pg_isready -U scrob -d scrob
-```
+Docker Compose uses this health check to determine when PostgreSQL is ready.
 
-Docker Compose will use this health check to determine when PostgreSQL is ready.
+Scrob then starts after PostgreSQL reports a healthy state.
 
-Scrob will then start after PostgreSQL reports a healthy state.
+Deployment
 
----
+The Compose configuration was validated with:
 
-## First Setup
+docker compose config --quiet
 
-Once the containers are running, Scrob should be available at:
+The services were then started with:
 
-```text
+docker compose up -d
+
+Docker automatically uses locally available images and pulls missing images when required.
+
+The deployed containers are:
+
+scrob
+scrob-db
+Troubleshooting
+Scrob container repeatedly restarting
+
+During the initial deployment, the Scrob container repeatedly restarted with:
+
+chown: cannot access '/app/backend/data': No such file or directory
+
+The initial volume mapping was:
+
+volumes:
+  - scrob_data:/app/data
+
+However, the current Scrob image expects its application data directory at:
+
+/app/backend/data
+
+The mapping was therefore changed to:
+
+volumes:
+  - scrob_data:/app/backend/data
+
+The Compose configuration was then validated again:
+
+docker compose config --quiet
+
+The containers were recreated:
+
+docker compose down
+docker compose up -d
+
+The existing named volumes were deliberately preserved by not using:
+
+docker compose down -v
+
+After the correction, the Scrob container started successfully and reported as healthy.
+
+Lesson learned
+
+A Docker volume mapping is not simply an arbitrary directory.
+
+The mounted path must match the directory expected by the application inside the container.
+
+This was diagnosed by reading the Scrob container logs:
+
+docker compose logs scrob
+
+The error message identified the expected path:
+
+/app/backend/data
+
+This demonstrates an important container troubleshooting workflow:
+
+Application fails
+      |
+      v
+Check container status
+      |
+      v
+Read container logs
+      |
+      v
+Identify expected path/configuration
+      |
+      v
+Correct Compose configuration
+      |
+      v
+Recreate container
+      |
+      v
+Verify health
+Verification
+Container Health
+
+The deployment was checked with:
+
+docker ps | grep -E "scrob|postgres"
+
+The result showed:
+
+scrob       Up ... (healthy)
+scrob-db    Up ... (healthy)
+
+Both Scrob and the PostgreSQL containers were healthy.
+
+Persistent Volume
+
+The Scrob Docker volume was verified with:
+
+docker volume ls | grep scrob
+
+Result:
+
+stage-1-docker_scrob_data
+
+This confirms that the persistent Scrob volume exists.
+
+HTTP Verification
+
+The Scrob HTTP endpoint was tested with:
+
+curl -I http://localhost:7330
+
+The response was:
+
+HTTP/1.1 302 Found
+location: /login
+
+This is a successful application response.
+
+The 302 Found response means Scrob is redirecting an unauthenticated request to:
+
+/login
+
+This confirms that the Scrob application is reachable and responding to HTTP requests.
+
+Web Interface
+
+The Scrob web interface was successfully accessed through:
+
 http://localhost:7330
-```
+
+The application loaded successfully in the browser.
+
+First Application Setup
+
+Scrob is available at:
+
+http://localhost:7330
 
 The first user can create an account through the web interface.
 
-Scrob requires a TMDB Read Access Token for metadata, search and images. This will be configured during the application setup.
+Additional application configuration, such as the TMDB Read Access Token, is application-level configuration and is separate from proving that the Docker deployment itself is functioning.
 
----
-
-## Verification
-
-The deployment will be verified using:
-
-```bash
+Useful Commands
+View running containers
 docker compose ps
-```
-
-```bash
+View Scrob logs
 docker compose logs scrob
-```
-
-```bash
+Follow Scrob logs
+docker compose logs -f scrob
+View PostgreSQL logs
 docker compose logs scrob-db
-```
+Enter the Scrob container
+docker exec -it scrob sh
+Enter PostgreSQL
+docker exec -it scrob-db psql -U scrob -d scrob
+List Docker volumes
+docker volume ls
+Inspect the Scrob volume
+docker volume inspect stage-1-docker_scrob_data
+Stage 1 Checklist
+ Inspect official Scrob Docker configuration
+ Create .env.example
+ Create local .env
+ Create docker-compose.yaml
+ Pull/use PostgreSQL image
+ Pull/use Scrob image
+ Start PostgreSQL
+ Start Scrob
+ Verify container health
+ Verify persistent Docker volumes
+ Verify HTTP response
+ Open Scrob web interface
+ Troubleshoot Scrob volume path
+ Document problems and solutions
+ Configure TMDB token
+ Complete additional application-level testing
+ Update root README
+ Commit Stage 1 completion
+Learning Outcome
 
-The Scrob web interface will then be tested at:
+At the end of Stage 1, we understand how Scrob depends on PostgreSQL and how the two containers communicate.
 
-```text
-http://localhost:7330
-```
+We also understand:
 
-PostgreSQL connectivity will also be verified.
+Docker Compose services
+Container networking
+Service-name DNS
+Environment variables
+Secret handling
+Docker named volumes
+PostgreSQL persistence
+Health checks
+Service dependencies
+Container logs
+Troubleshooting volume mount paths
+HTTP verification
 
----
+This Docker architecture becomes the reference architecture when the application is later migrated into Kubernetes.
 
-## Troubleshooting
+Next Stage
 
-Potential problems to investigate during this stage:
+The next stage is:
 
-### PostgreSQL not ready
+Stage 2 — Kubernetes with Kind
 
-Check:
+We will recreate the application architecture inside a local Kubernetes cluster and begin translating the Docker concepts into Kubernetes concepts:
 
-```bash
-docker compose logs scrob-db
-```
+Docker Compose          Kubernetes
 
-### Scrob cannot connect to PostgreSQL
+service             →   Deployment
+service name        →   Service
+environment         →   ConfigMap / Secret
+named volume        →   PersistentVolumeClaim
+depends_on          →   Kubernetes readiness/health mechanisms
 
-Check:
+The goal is to progressively move from:
 
-```bash
-docker compose logs scrob
-```
+Docker Compose
+      |
+      v
+Kubernetes
+      |
+      v
+Kind
+      |
+      v
+Istio
+      |
+      v
+Argo CD
+      |
+      v
+GitOps
 
-Verify:
-
-```text
-DATABASE_URL
-POSTGRES_USER
-POSTGRES_PASSWORD
-POSTGRES_DB
-```
-
-### Port 7330 already in use
-
-Check:
-
-```bash
-sudo ss -ltnp | grep 7330
-```
-
-### Containers are running but Scrob is unavailable
-
-Check:
-
-```bash
-docker compose ps
-```
-
-Then:
-
-```bash
-docker compose logs scrob
-```
-
----
-
-# Stage 1 Checklist
-
-* [ ] Inspect official Scrob Docker configuration
-* [ ] Create `.env.example`
-* [ ] Create local `.env`
-* [ ] Create `docker-compose.yaml`
-* [ ] Pull PostgreSQL image
-* [ ] Pull Scrob image
-* [ ] Start PostgreSQL
-* [ ] Start Scrob
-* [ ] Verify container health
-* [ ] Verify PostgreSQL connectivity
-* [ ] Open Scrob web interface
-* [ ] Complete first application setup
-* [ ] Configure TMDB token
-* [ ] Test application
-* [ ] Document problems and solutions
-* [ ] Update root README
-* [ ] Commit Stage 1
-
----
-
-## Learning Outcome
-
-At the end of Stage 1, we should understand exactly how Scrob depends on PostgreSQL and how the two containers communicate.
-
-This Docker architecture will become the reference architecture when the application is later migrated into Kubernetes.
-
+while keeping the architecture and lessons from each stage documented.
