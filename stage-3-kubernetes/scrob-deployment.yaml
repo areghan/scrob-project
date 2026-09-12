@@ -1,0 +1,48 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scrob
+spec:
+  replicas: 1
+
+  selector:
+    matchLabels:
+      app: scrob
+
+  template:
+    metadata:
+      labels:
+        app: scrob
+
+    spec:
+      enableServiceLinks: false
+      
+      containers:
+        - name: scrob
+          image: bellamy/scrob:latest
+
+          ports:
+            - containerPort: 7330
+              protocol: TCP
+
+          volumeMounts:
+            - name: scrob-data
+              mountPath: /app/backend/data
+
+          env:
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: scrob-secret
+                  key: SECRET_KEY
+
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: scrob-secret
+                  key: DATABASE_URL
+
+      volumes:
+        - name: scrob-data
+          persistentVolumeClaim:
+            claimName: scrob-pvc

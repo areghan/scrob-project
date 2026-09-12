@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: scrob
+spec:
+  type: ClusterIP
+
+  selector:
+    app: scrob
+
+  ports:
+    - name: http
+      port: 7330
+      targetPort: 7330
+      protocol: TCP
