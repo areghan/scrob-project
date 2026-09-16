@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-postgres
+  labels:
+    app.kubernetes.io/name: postgres
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  type: {{ .Values.postgres.service.type }}
+  selector:
+    app.kubernetes.io/name: postgres
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  ports:
+    - name: postgres
+      port: {{ .Values.postgres.service.port }}
+      targetPort: 5432
+      protocol: TCP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-scrob
+  labels:
+    app.kubernetes.io/name: scrob
+    app.kubernetes.io/instance: {{ .Release.Name }}
+spec:
+  type: {{ .Values.scrob.service.type }}
+  selector:
+    app.kubernetes.io/name: scrob
+    app.kubernetes.io/instance: {{ .Release.Name }}
+  ports:
+    - name: http
+      port: {{ .Values.scrob.service.port }}
+      targetPort: 7330
+      protocol: TCP

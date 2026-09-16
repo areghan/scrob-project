@@ -1,0 +1,63 @@
+scrob:
+  replicaCount: 1
+
+  image:
+    repository: bellamy/scrob
+    tag: latest
+    pullPolicy: IfNotPresent
+
+  service:
+    type: ClusterIP
+    port: 7330
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  persistence:
+    enabled: true
+    size: 5Gi
+    accessMode: ReadWriteOnce
+    storageClass: standard
+
+postgres:
+  replicaCount: 1
+
+  image:
+    repository: postgres
+    tag: "16-alpine"
+    pullPolicy: IfNotPresent
+
+  service:
+    type: ClusterIP
+    port: 5432
+
+  database: scrob
+  username: scrob
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  persistence:
+    enabled: true
+    size: 5Gi
+    accessMode: ReadWriteOnce
+    storageClass: standard
+
+ingress:
+  enabled: true
+  className: nginx
+  host: scrob.local
+
+secrets:
+  postgresPassword: ""
+  scrobSecretKey: ""
